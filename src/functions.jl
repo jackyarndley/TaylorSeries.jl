@@ -1181,6 +1181,49 @@ function inverse(f::Taylor1{T}) where {T<:Number}
 end
 
 
+@doc doc"""
+    inverse_map(f)
+
+Return the Taylor expansion of ``f^{-1}(t)``, of order `N = f.order`,
+for `f::Vector{TaylorN}`. The length of the vector `f` must be equal to the 
+number of variables used in the Taylor polynomials, otherwise an `Error` is thrown.
+
+This algorithm implements fixed point method for calculating the inverse mapping by 
+splitting the map into linear and nonlinear parts. 
+```
+
+""" inverse_map
+
+function inverse_map(f::Vector{TaylorN{T}}) where {T<:Number}
+    if length(f) != get_numvars()
+        throw(AssertionError(
+            "Size of vector to invert must be equal to the number of variables."
+        ))
+    end
+
+    # Split the polynomial mapping into linear and nonlinear parts
+    linear = linear_polynomial.(f)
+    nonlinear = nonlinear_polynomial.(f)
+
+    # Get the inverse of the linear part matrix
+    linear_inv = inv(TaylorSeries.jacobian(linear))
+
+    linear_inv_nonlinear = linear_inv * nonlinear
+    linear_inv_polynomial = linear_inv * get_variables()
+
+    # Starting estimate of the inverse of the polynomial map
+    map_inv = deepcopy(linear_inv_polynomial)
+
+    # Fixed point iterations to obtain inverse mapping
+    for _ in 1:(get_order() - 1)
+        map_inv = [linear_inv_polynomial[i] - evaluate(linear_inv_nonlinear[i], map_inv) 
+        for i in 1:length(f)]
+    end
+
+    return [evaluate(map_inv[i], get_variables() - constant_term.(f)) for i in 1:length(f)]
+end
+
+
 
 # Documentation for the recursion relations
 @doc doc"""

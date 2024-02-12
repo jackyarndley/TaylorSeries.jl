@@ -860,3 +860,24 @@ end
     # @test ii2 == fint_exact
 
 end
+
+@testset "Polynomial map inversion" begin
+    order = 3
+    numvars = 5
+
+    x = set_variables("x", numvars=numvars, order=order)
+
+    map = [
+        x[1] + 5x[2]^2 + 10x[3]^6 + sin(x[4]*x[5]) + 0.25,
+        exp(x[2]) + exp(sum(x[3])) - 0.5,
+        x[1] + asin(x[3]) + 1.0,
+        x[4] + 1.0,
+        x[5] + 0.25
+    ]
+
+    map_inv = inverse_map(map)
+    i1 = [evaluate(evaluate(map_inv[i], map), fill(1.0, numvars)) for i in 1:length(map)]
+
+    @test all(i1 .≈ 1.0)
+    @test_throws AssertionError inverse_map(map[1:end-1])
+end
